@@ -640,7 +640,6 @@ void eval_micro_sequencer() {
     copyIntAr(CONTROL_STORE[j], (int*)NEXT_LATCHES.MICROINSTRUCTION, CONTROL_STORE_BITS);
     NEXT_LATCHES.STATE_NUMBER = j;
   }
-
 }
 
 int mem_cycle = 0;
@@ -687,6 +686,7 @@ int getSR2(void);
 int getBEN(void);
 int isEqual(int* ar1, int* ar2, int len);
 int checkException(void);
+
 void eval_bus_drivers() {
 
   /* 
@@ -903,7 +903,10 @@ void drive_bus() {
 		else {BUS = CURRENT_LATCHES.SSP;}
 	}
 	else if (GetGateVMUX(CURRENT_LATCHES.MICROINSTRUCTION)) {
-		if (GetVMUX(CURRENT_LATCHES.MICROINSTRUCTION) == 1) {BUS = CURRENT_LATCHES.EXCV;}
+		if (GetVMUX(CURRENT_LATCHES.MICROINSTRUCTION) == 1) {
+      BUS = CURRENT_LATCHES.EXCV;
+      CURRENT_LATCHES.EXC = 0;
+     }
 		else {BUS = CURRENT_LATCHES.INTV;}
 		CURRENT_LATCHES.INT = 0;
 	}
@@ -912,7 +915,6 @@ void drive_bus() {
 	}
   else {BUS = 0;}
 }
-
 
 void latch_datapath_values() {
 
@@ -982,6 +984,7 @@ int getBEN(void) {
   int p = ((CURRENT_LATCHES.IR&0x0200) >> 9) & CURRENT_LATCHES.P;
   return n | z | p;
 }
+
 /*returns copy of src */
 int*  intdup(int* src, int len) {
   int i;
@@ -999,6 +1002,7 @@ void copyIntAr(int* src, int* dup, int len) {
     dup[i] = src[i];
   }
 }
+
 int checkException(void) {
   if (CURRENT_LATCHES.PSR&0x8000 == 0 && CURRENT_LATCHES.MAR < 0x3000 && GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION) == 1) {
     NEXT_LATCHES.EXCV = 2;
