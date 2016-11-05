@@ -629,6 +629,7 @@ void eval_micro_sequencer() {
 		if (exception) {
 			copyIntAr(CONTROL_STORE[63], (int*)CURRENT_LATCHES.MICROINSTRUCTION, CONTROL_STORE_BITS);
 			CURRENT_LATCHES.EXCV = exception;
+			CURRENT_LATCHES.STATE_NUMBER = 63;
 		}
     int j = GetJ(CURRENT_LATCHES.MICROINSTRUCTION);
     int cond_bits = GetCOND(CURRENT_LATCHES.MICROINSTRUCTION);
@@ -972,7 +973,8 @@ void latch_datapath_values() {
       MEMORY[CURRENT_LATCHES.MAR>>1][byte] = (CURRENT_LATCHES.MDR &0xFF);
     }
   }
-	if (CYCLE_COUNT == 299) {
+	int user = CURRENT_LATCHES.PSR & 0x8000;
+	if (CYCLE_COUNT == 299 && user == 0x8000) {
 		NEXT_LATCHES.INT = 1;
 		NEXT_LATCHES.INTV = 0x0001;
 	} else {
@@ -1010,7 +1012,7 @@ void copyIntAr(int* src, int* dup, int len) {
 
 int checkException(void) {
 	int psr = CURRENT_LATCHES.PSR&0x8000;
-  if ((psr != 0) && (CURRENT_LATCHES.MAR < 0x3000) && (GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION))) {
+  if ((psr != 0) && (CURRENT_LATCHES.MAR < 0x3000) && (GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION)) && (CURRENT_LATCHES.STATE_NUMBER != 28)) {
     NEXT_LATCHES.EXCV = 2;
 		NEXT_LATCHES.STATE_NUMBER = 0x3F;
     printf("Protection Exception at Cycle : %d\n", CYCLE_COUNT);
