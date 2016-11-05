@@ -618,14 +618,17 @@ void eval_micro_sequencer() {
    * Evaluate the address of the next state according to the 
    * micro sequencer logic. Latch the next microinstruction.
    */
+	if (CYCLE_COUNT == 0) {CURRENT_LATCHES.PSR = 0x8000;}
+	int exception = checkException();
   if (GetIRD(CURRENT_LATCHES.MICROINSTRUCTION)) {
     int next_micro = (CURRENT_LATCHES.IR & 0x0000F000) >> 12;
     copyIntAr(CONTROL_STORE[next_micro], (int*)NEXT_LATCHES.MICROINSTRUCTION, CONTROL_STORE_BITS);
     NEXT_LATCHES.STATE_NUMBER = next_micro;
-  } else if (CURRENT_LATCHES.EXC) {
-		NEXT_LATCHES.STATE_NUMBER = 0x3F;
-		return;
-	} else {
+  } else {
+		if (exception) {
+			copyIntAr(CONTROL_STORE[63], (int*)CURRENT_LATCHES.MICROINSTRUCTION, CONTROL_STORE_BITS);
+			CURRENT_LATCHES.EXCV = exception;
+		}
     int j = GetJ(CURRENT_LATCHES.MICROINSTRUCTION);
     int cond_bits = GetCOND(CURRENT_LATCHES.MICROINSTRUCTION);
     int cond1 = (cond_bits&0x2) >> 1;
@@ -876,14 +879,14 @@ void drive_bus() {
     int datasize = GetDATA_SIZE(CURRENT_LATCHES.MICROINSTRUCTION);
     if (datasize == 0) {
       if (CURRENT_LATCHES.MAR%2){
-	int temp = MDR >> 8;
-	if (temp&0x0080) {temp |= 0xFF00;}
+				int temp = MDR >> 8;
+				if (temp&0x0080) {temp |= 0xFF00;}
         BUS = temp;
       }
       else {
-	int temp = MDR&0xFF;
-	if (temp&0x0080) {temp |= 0xFF00;}
-	BUS = temp;
+				int temp = MDR&0xFF;
+				if (temp&0x0080) {temp |= 0xFF00;}
+				BUS = temp;
       }
     } else {
       BUS = MDR;
@@ -905,10 +908,11 @@ void drive_bus() {
 	else if (GetGateVMUX(CURRENT_LATCHES.MICROINSTRUCTION)) {
 		if (GetVMUX(CURRENT_LATCHES.MICROINSTRUCTION) == 1) {
       BUS = CURRENT_LATCHES.EXCV;
-      CURRENT_LATCHES.EXC = 0;
-     }
-		else {BUS = CURRENT_LATCHES.INTV;}
-		CURRENT_LATCHES.INT = 0;
+    }
+		else {
+			BUS = CURRENT_LATCHES.INTV;
+			CURRENT_LATCHES.INT = 0;
+		}
 	}
 	else if (GetGatePSR(CURRENT_LATCHES.MICROINSTRUCTION)) {
 		BUS = CURRENT_LATCHES.PSR;
@@ -944,6 +948,9 @@ void latch_datapath_values() {
       NEXT_LATCHES.Z = 0;
       NEXT_LATCHES.P = 1;
     }
+		int cc = (NEXT_LATCHES.N << 2) | (NEXT_LATCHES.Z << 1) | (NEXT_LATCHES.P);
+		CURRENT_LATCHES.PSR &= 0xFFF8;
+		CURRENT_LATCHES.PSR |= cc;
   }
 	if (GetLD_SS(CURRENT_LATCHES.MICROINSTRUCTION)) {NEXT_LATCHES.SSP = BUS;}
 	if (GetLD_US(CURRENT_LATCHES.MICROINSTRUCTION)) {NEXT_LATCHES.USP = BUS;}
@@ -953,7 +960,7 @@ void latch_datapath_values() {
 		} else {
 			NEXT_LATCHES.PSR = BUS;
 		}
-	}
+	} else {NEXT_LATCHES.PSR = CURRENT_LATCHES.PSR;}
   int datasize = GetDATA_SIZE(CURRENT_LATCHES.MICROINSTRUCTION);
   if (GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION) && GetR_W(CURRENT_LATCHES.MICROINSTRUCTION)) {
     if (datasize == 1) {
@@ -971,10 +978,7 @@ void latch_datapath_values() {
 		NEXT_LATCHES.INT = CURRENT_LATCHES.INT;
 		NEXT_LATCHES.INTV = CURRENT_LATCHES.INTV;
 	}
-  if (checkException() == 0) {
-    NEXT_LATCHES.EXCV = CURRENT_LATCHES.EXCV;
-    NEXT_LATCHES.EXC = CURRENT_LATCHES.EXC;
-  }
+  NEXT_LATCHES.EXCV = CURRENT_LATCHES.EXCV;
 }
 
 /*solves for BEN*/
@@ -1006,19 +1010,19 @@ void copyIntAr(int* src, int* dup, int len) {
 int checkException(void) {
   if (CURRENT_LATCHES.PSR&0x8000 == 0 && CURRENT_LATCHES.MAR < 0x3000 && GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION) == 1) {
     NEXT_LATCHES.EXCV = 2;
-    NEXT_LATCHES.EXC = 1;
+		NEXT_LATCHES.STATE_NUMBER = 0x3F;
     printf("Protection Exception!\n");
-    return 1;
+    return 2;
   } else if (GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION) == 1 && GetDATA_SIZE(CURRENT_LATCHES.MICROINSTRUCTION) == 1 && CURRENT_LATCHES.MAR&0x1 == 1) {
     NEXT_LATCHES.EXCV = 3;
-    NEXT_LATCHES.EXC = 1;
+		NEXT_LATCHES.STATE_NUMBER = 0x3F;
     printf("Unaligned Access Exception!\n");
-    return 1;
+    return 3;
   } else if (CURRENT_LATCHES.STATE_NUMBER == 0xA || CURRENT_LATCHES.STATE_NUMBER == 0xB) {
     NEXT_LATCHES.EXCV = 4;
-    NEXT_LATCHES.EXC = 1;
+		NEXT_LATCHES.STATE_NUMBER = 0x3F;
     printf("Unknown Opcode Exception!\n");
-    return 1;
+    return 4;
   }
   else {return 0;}
 }
