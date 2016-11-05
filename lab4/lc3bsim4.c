@@ -339,6 +339,7 @@ void rdump(FILE * dumpsim_file) {
     printf("BUS          : 0x%04x\n", BUS);
     printf("MDR          : 0x%04x\n", CURRENT_LATCHES.MDR);
     printf("MAR          : 0x%04x\n", CURRENT_LATCHES.MAR);
+		printf("PSR          : 0x%04x\n", CURRENT_LATCHES.PSR); /*MINE!!!!!!!!*/
     printf("CCs: N = %d  Z = %d  P = %d\n", CURRENT_LATCHES.N, CURRENT_LATCHES.Z, CURRENT_LATCHES.P);
     printf("Registers:\n");
     for (k = 0; k < LC_3b_REGS; k++)
@@ -1008,10 +1009,12 @@ void copyIntAr(int* src, int* dup, int len) {
 }
 
 int checkException(void) {
-  if (CURRENT_LATCHES.PSR&0x8000 == 0 && CURRENT_LATCHES.MAR < 0x3000 && GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION) == 1) {
+	int psr = CURRENT_LATCHES.PSR&0x8000;
+  if ((psr != 0) && (CURRENT_LATCHES.MAR < 0x3000) && (GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION))) {
     NEXT_LATCHES.EXCV = 2;
 		NEXT_LATCHES.STATE_NUMBER = 0x3F;
-    printf("Protection Exception!\n");
+    printf("Protection Exception at Cycle : %d\n", CYCLE_COUNT);
+		printf("PSR = %x\n MAR = %x\n MIO_EN = %x\n", psr, CURRENT_LATCHES.MAR, GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION)); 
     return 2;
   } else if (GetMIO_EN(CURRENT_LATCHES.MICROINSTRUCTION) == 1 && GetDATA_SIZE(CURRENT_LATCHES.MICROINSTRUCTION) == 1 && CURRENT_LATCHES.MAR&0x1 == 1) {
     NEXT_LATCHES.EXCV = 3;
