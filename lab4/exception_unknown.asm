@@ -1,0 +1,4 @@
+	.ORIG x1C00
+	AND R2, R2, #0
+	HALT
+	.END
