@@ -961,6 +961,9 @@ void latch_datapath_values() {
 			NEXT_LATCHES.PSR = CURRENT_LATCHES.PSR&0x7FFF;
 		} else {
 			NEXT_LATCHES.PSR = BUS;
+			NEXT_LATCHES.N = (BUS&0x4) >> 2;
+			NEXT_LATCHES.Z = (BUS&0x2) >> 1;
+			NEXT_LATCHES.P = (BUS&0x1);
 		}
 	} else {NEXT_LATCHES.PSR = CURRENT_LATCHES.PSR;}
   int datasize = GetDATA_SIZE(CURRENT_LATCHES.MICROINSTRUCTION);
