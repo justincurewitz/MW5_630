@@ -639,7 +639,7 @@ void eval_micro_sequencer() {
     cond_bits = 0;
     cond_bits = ((cond1&(~cond0)&CURRENT_LATCHES.BEN) << 2) + (((~cond1)&cond0&CURRENT_LATCHES.READY) << 1) + (cond1&cond0&ir11);
     j |= cond_bits;
-		if (GetAINT(CURRENT_LATCHES.MICROINSTRUCTION)) {
+		if (GetAINT(CURRENT_LATCHES.MICROINSTRUCTION) && ((j == 0x12) || (j == 0x13))) {
 			j |= CURRENT_LATCHES.INT << 5;
 		}
     copyIntAr(CONTROL_STORE[j], (int*)NEXT_LATCHES.MICROINSTRUCTION, CONTROL_STORE_BITS);
